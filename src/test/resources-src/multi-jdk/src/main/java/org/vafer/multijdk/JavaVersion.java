@@ -1,3 +1,4 @@
+package org.vafer.multijdk;
 /*
  * Copyright 2010-2023 The jdependency developers.
  *
@@ -13,8 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.vafer.jdependency;
 
-public interface Console {
-    void println( final String pString );
+public class JavaVersion extends AbstractJavaVersion {
+    public String getCodeVersion() {
+        return "8";
+    }
+
+    public String getJavaVersion() {
+        return System.getProperty("java.version");
+    }
 }

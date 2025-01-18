@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2018 The jdependency developers.
+ * Copyright 2010-2023 The jdependency developers.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,122 +15,150 @@
  */
 package org.vafer.jdependency;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assume.assumeTrue;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
-
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.MessageDigest;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import static org.junit.Assert.*;
+
 @RunWith(Parameterized.class)
 public class ClazzpathTestCase {
-    private static abstract class AddClazzpathUnit {
-        abstract boolean isApplicable( String resourceName );
-
-        final ClazzpathUnit to( Clazzpath clazzpath, String resourceName ) throws IOException {
-            return to(clazzpath, resourceName, defaultResourceId(resourceName));
-        }
-
-        String defaultResourceId(String resourceName) {
-            return resourceName;
-        }
-
-        abstract ClazzpathUnit to( Clazzpath clazzpath, String resourceName, String resourceId ) throws IOException;
-    }
-
-    /**
-     * Return parameterized test data collection:
-     * <ol>
-     * <li>AddClazzpathUnit for classpath-based jars</li>
-     * <li>AddClazzpathUnit for filesystem-based jars</li>
-     * <li>AddClazzpathUnit for filesystem-based directories</li>
-     * </ol>
-     * @return Collection&lt;Object[]&gt;
-     */
-    @Parameters
-    public static Collection<Object[]> data() {
-        return Arrays.asList(new Object[] { new AddClazzpathUnit() {
-
-            ClazzpathUnit to( Clazzpath toClazzpath, String resourceName, String resourceId ) throws IOException {
-                InputStream resourceAsStream = getClass().getClassLoader().getResourceAsStream(resourceName + ".jar");
-                assertNotNull(resourceAsStream);
-                return toClazzpath.addClazzpathUnit(resourceAsStream, resourceId);
-            }
-
-            boolean isApplicable( String resourceName ) {
-                return getClass().getClassLoader().getResource(resourceName + ".jar") != null;
-            }
-
-        }}, new Object[] { new AddClazzpathUnit() {
-
-            ClazzpathUnit to( Clazzpath toClazzpath, String resourceName, String resourceId ) throws IOException {
-                return toClazzpath.addClazzpathUnit(new File(resourceName + ".jar"), resourceId);
-            }
-
-            boolean isApplicable( String resourceName ) {
-                return new File(resourceName + ".jar").exists();
-            }
-
-            @Override
-            String defaultResourceId( String resourceName ) {
-                return new File(resourceName + ".jar").getAbsolutePath();
-            }
-
-        }}, new Object[] { new AddClazzpathUnit() {
-
-            ClazzpathUnit to( Clazzpath toClazzpath, String resourceName, String resourceId ) throws IOException {
-                return toClazzpath.addClazzpathUnit(new File(resourceName), resourceId);
-            }
-
-            boolean isApplicable( String resourceName ) {
-                return new File(resourceName).exists();
-            }
-
-            @Override
-            String defaultResourceId( String resourceName ) {
-                return new File(resourceName).getAbsolutePath();
-            }
-
-        }});
-    }
 
     private final AddClazzpathUnit addClazzpathUnit;
 
-    public ClazzpathTestCase( AddClazzpathUnit pAddClazzpathUnit ) {
+    private static abstract class AddClazzpathUnit {
+
+        abstract ClazzpathUnit to( Clazzpath clazzpath, String filename, String id ) throws IOException;
+
+        final ClazzpathUnit to( Clazzpath clazzpath, String filename ) throws IOException {
+            return to(clazzpath, filename, filename);
+        }
+    }
+
+    private final String kind;
+
+
+    private static Path resourcePath( String filename ) {
+        return Paths.get(filename);
+    }
+
+    private static File resourceFile( String filename ) {
+        return Paths.get(filename).toFile();
+    }
+
+    private static Set<ClazzpathUnit> unitSet(ClazzpathUnit[] ar) {
+        return new HashSet<ClazzpathUnit>(Arrays.asList(ar));
+    }
+
+    /**
+     * Parameters for test
+     *
+     * 1. AddClazzpathUnit for classpath-based jars
+     * 2. AddClazzpathUnit for filesystem-based jars
+     * 3. AddClazzpathUnit for filesystem-based directories
+     */
+    @Parameters(name = "{index}: {1}")
+    public static Collection<Object[]> data() {
+        return Arrays.asList(
+
+            new Object[] { new AddClazzpathUnit() {
+
+                ClazzpathUnit to(Clazzpath toClazzpath, String filename, String id) throws IOException {
+                    final String p = filename + ".jar";
+                    InputStream resourceAsStream = getClass()
+                        .getClassLoader()
+                        .getResourceAsStream(p);
+                    assertNotNull("missing:" + p, resourceAsStream);
+                    return toClazzpath.addClazzpathUnit(resourceAsStream, id);
+                }
+            }, "classpath"},
+            new Object[] { new AddClazzpathUnit() {
+
+                ClazzpathUnit to(Clazzpath toClazzpath, String filename, String id) throws IOException {
+                    final String p = filename + ".jar";
+                    File file = resourceFile(p);
+                    assertTrue("missing:" + file, file.exists() && file.isFile());
+                    return toClazzpath.addClazzpathUnit(file, id);
+                }
+            }, "file-jar"},
+            new Object[] { new AddClazzpathUnit() {
+
+                ClazzpathUnit to(Clazzpath toClazzpath, String filename, String id) throws IOException {
+                    final String p = filename;
+                    File file = resourceFile(p);
+                    assertTrue("missing:" + file , file.exists() && file.isDirectory());
+                    return toClazzpath.addClazzpathUnit(file, id);
+                }
+            }, "file-directory"},
+            new Object[] { new AddClazzpathUnit() {
+
+                ClazzpathUnit to(Clazzpath toClazzpath, String filename, String id) throws IOException {
+                    final String p = filename + ".jar";
+                    Path path = resourcePath(p);
+                    assertTrue("missing:" + path, Files.exists(path) && Files.isRegularFile(path));
+                    return toClazzpath.addClazzpathUnit(path, id);
+                }
+            }, "path-jar"},
+            new Object[] { new AddClazzpathUnit() {
+
+                ClazzpathUnit to(Clazzpath toClazzpath, String filename, String id) throws IOException {
+                    final String p = filename;
+                    Path path = resourcePath(p);
+                    assertTrue("missing:" + path, Files.exists(path) && Files.isDirectory(path));
+                    return toClazzpath.addClazzpathUnit(path, id);
+                }
+            }, "path-directory"}
+
+        );
+    }
+
+    public ClazzpathTestCase( AddClazzpathUnit pAddClazzpathUnit, String pKind ) {
         super();
-        this.addClazzpathUnit = pAddClazzpathUnit;
+        addClazzpathUnit = pAddClazzpathUnit;
+        kind = pKind;
     }
 
     @Test
     public void testShouldAddClasses() throws IOException {
-        assumeTrue(addClazzpathUnit.isApplicable("jar1"));
-        assumeTrue(addClazzpathUnit.isApplicable("jar2"));
 
         final Clazzpath cp = new Clazzpath();
-        addClazzpathUnit.to(cp, "jar1");
-        addClazzpathUnit.to(cp, "jar2");
+        final ClazzpathUnit u1 = addClazzpathUnit.to(cp, "jar1");
+        final ClazzpathUnit u2 = addClazzpathUnit.to(cp, "jar2");
 
         final ClazzpathUnit[] units = cp.getUnits();
+
         assertEquals(2, units.length);
+        assertEquals(unitSet(new ClazzpathUnit[]{ u1, u2 }), unitSet(units));
 
         assertEquals(129, cp.getClazzes().size());
+
+        final Clazz clazz = cp.getClazz("org.apache.commons.io.IOUtils");
+        assertNotNull(clazz);
+
+        assertEquals(1, clazz.getClazzpathUnits().size());
+        assertEquals(unitSet(new ClazzpathUnit[]{u1}), clazz.getClazzpathUnits());
+        assertEquals(23, clazz.getDependencies().size());
+        assertEquals(32, clazz.getTransitiveDependencies().size());
+        assertEquals(5, clazz.getReferences().size());
+
     }
 
     @Test
     public void testShouldRemoveClasspathUnit() throws IOException {
-        assumeTrue(addClazzpathUnit.isApplicable("jar1"));
-        assumeTrue(addClazzpathUnit.isApplicable("jar2"));
 
         final Clazzpath cp = new Clazzpath();
 
@@ -153,7 +181,6 @@ public class ClazzpathTestCase {
 
     @Test
     public void testShouldRevealMissingClasses() throws IOException {
-        assumeTrue(addClazzpathUnit.isApplicable("jar1-missing"));
 
         final Clazzpath cp = new Clazzpath();
         addClazzpathUnit.to(cp, "jar1-missing");
@@ -163,38 +190,40 @@ public class ClazzpathTestCase {
         final Set<String> actual = new HashSet<String>();
         for (Clazz clazz : missing) {
             String name = clazz.getName();
-            // ignore the rt.jar
+            // ignore the rt
             if (!name.startsWith("java")) {
                 actual.add(name);
             }
         }
 
         final Set<String> expected = new HashSet<String>(Arrays.asList(
-                "org.apache.commons.io.output.ProxyOutputStream",
-                "org.apache.commons.io.input.ProxyInputStream"
-                ));
+            "org.apache.commons.io.output.ProxyOutputStream",
+            "org.apache.commons.io.input.ProxyInputStream"
+            ));
 
         assertEquals(expected, actual);
     }
 
     @Test
     public void testShouldShowClasspathUnitsResponsibleForClash() throws IOException {
-        assumeTrue(addClazzpathUnit.isApplicable("jar1"));
 
         final Clazzpath cp = new Clazzpath();
-        addClazzpathUnit.to(cp, "jar1");
-        addClazzpathUnit.to(cp, "jar1", "jar2");
+        final ClazzpathUnit a = addClazzpathUnit.to(cp, "jar1");
+        final ClazzpathUnit b = addClazzpathUnit.to(cp, "jar1", "foo");
 
-        final Set<Clazz> actual = cp.getClashedClazzes();
-        final Set<Clazz> expected = cp.getClazzes();
+        final Set<Clazz> clashed = cp.getClashedClazzes();
+        final Set<Clazz> all = cp.getClazzes();
 
-        assertEquals(expected, actual);
+        assertEquals(all, clashed);
+
+        for (Clazz clazz : clashed) {
+            assertTrue(clazz.getClazzpathUnits().contains(a));
+            assertTrue(clazz.getClazzpathUnits().contains(b));
+        }
     }
 
     @Test
     public void testShouldFindUnusedClasses() throws IOException {
-        assumeTrue(addClazzpathUnit.isApplicable("jar3using1"));
-        assumeTrue(addClazzpathUnit.isApplicable("jar1"));
 
         final Clazzpath cp = new Clazzpath();
         final ClazzpathUnit artifact = addClazzpathUnit.to(cp, "jar3using1");
@@ -213,12 +242,57 @@ public class ClazzpathTestCase {
     }
 
     @Test
+    public void testShouldShowNonUniqClasspathUnitsResponsibleForClash() throws IOException {
+
+        final Clazzpath cp = new Clazzpath(true);
+        addClazzpathUnit.to(cp, "jar1");
+        addClazzpathUnit.to(cp, "jar1", "foo");
+
+        final Set<Clazz> clashed = cp.getClashedClazzes();
+
+        assertEquals(59, clashed.size());
+
+        final Set<Clazz> uniq = clashed.stream()
+//            .map(c -> {
+//                System.out.println("clazz:" + c + " versions:" + c.getVersions());
+//                return c;
+//            })
+            .filter(c -> c.getVersions().size() == 1)
+            .collect(Collectors.toSet());
+
+        clashed.removeAll(uniq);
+
+        assertEquals(0, clashed.size());
+    }
+
+    @Test
+    public void testMessageDigest() throws Exception {
+
+        final MessageDigest d1 = MessageDigest.getInstance("SHA-256");
+        final MessageDigest d2 = MessageDigest.getInstance("SHA-256");
+
+        // assertEquals(d1, d2);
+        // assertEquals(d1.hashCode(), d2.hashCode());
+
+        final byte[] d1bytes = d1.digest();
+        final byte[] d2bytes = d2.digest();
+
+        assertTrue(MessageDigest.isEqual(d1bytes, d2bytes));
+        assertArrayEquals(d1bytes, d2bytes);
+
+        // final Set<byte[]> set = new HashSet<>();
+        // set.add(d1bytes);
+        // set.add(d2bytes);
+        // assertEquals(1, set.size());
+    }
+
+
+    @Test
     public void testWithModuleInfo() throws Exception {
-        assumeTrue(addClazzpathUnit.isApplicable("asm-6.0_BETA"));
 
         final Clazzpath cp = new Clazzpath();
         final ClazzpathUnit artifact = addClazzpathUnit.to(cp, "asm-6.0_BETA");
 
-        assertNull(artifact.getClazz( "module-info" ));
+        assertNull(artifact.getClazz("module-info"));
     }
 }

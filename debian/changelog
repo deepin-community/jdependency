@@ -1,3 +1,14 @@
+jdependency (2.10-1) unstable; urgency=medium
+
+  * New upstream release
+    - Depend on libasm-java (>= 9.0)
+    - Depend on libcommons-io-java (>= 2.15)
+  * Standards-Version updated to 4.7.0
+  * Switch to debhelper level 13
+  * Updated the watch file
+
+ -- Emmanuel Bourg <ebourg@apache.org>  Mon, 08 Apr 2024 16:02:34 +0200
+
 jdependency (1.4-1) unstable; urgency=medium
 
   * New upstream release

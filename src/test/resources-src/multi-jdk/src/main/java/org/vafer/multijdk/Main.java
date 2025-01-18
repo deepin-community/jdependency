@@ -1,3 +1,4 @@
+package org.vafer.multijdk;
 /*
  * Copyright 2010-2023 The jdependency developers.
  *
@@ -13,8 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.vafer.jdependency;
 
-public interface Console {
-    void println( final String pString );
+public class Main {
+    public static void main(String[] args) {
+        JavaVersion javaVersion = new JavaVersion();
+        System.out.println("Java detect: " + javaVersion.getCodeVersion());
+        System.out.println("Java major : " + javaVersion.getJavaMajorVersion());
+        System.out.println("App code   : " + new App().doSomething());
+        System.out.println("Unused     : " + new Unused().doSomething());
+    }
 }

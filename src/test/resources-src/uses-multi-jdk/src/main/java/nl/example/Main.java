@@ -1,5 +1,6 @@
+package nl.example;
 /*
- * Copyright 2010-2018 The jdependency developers.
+ * Copyright 2010-2023 The jdependency developers.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,12 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.vafer.jdependency.asm;
+import org.vafer.multijdk.JavaVersion;
+import org.vafer.multijdk.App;
 
-public class Remapper extends org.objectweb.asm.commons.Remapper {
-
-    public String map(String name) {
-        return super.map(name);
+public class Main {
+    public static void main(String[] args) {
+        JavaVersion javaVersion = new JavaVersion();
+        System.out.println("Java detect: " + javaVersion.getCodeVersion());
+        System.out.println("Java major : " + javaVersion.getJavaMajorVersion());
+        System.out.println("App code   : " + new App().doSomething());
     }
-
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2018 The jdependency developers.
+ * Copyright 2010-2023 The jdependency developers.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,22 +17,25 @@ package org.vafer.jdependency.utils;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashSet;
 import java.util.Set;
-import java.util.jar.JarEntry;
-import java.util.jar.JarInputStream;
 
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.output.NullOutputStream;
 import org.objectweb.asm.ClassReader;
 import org.vafer.jdependency.asm.DependenciesClassAdapter;
 
+/**
+ * internal - do not use
+ */
 public final class DependencyUtils {
 
+    private DependencyUtils() {}
+
+    /*
     public static Set<String> getDependenciesOfJar( final InputStream pInputStream ) throws IOException {
+
         final JarInputStream inputStream = new JarInputStream(pInputStream);
         final NullOutputStream nullStream = new NullOutputStream();
         final Set<String> dependencies = new HashSet<String>();
+
         try {
             while (true) {
                 final JarEntry entry = inputStream.getNextJarEntry();
@@ -63,6 +66,7 @@ public final class DependencyUtils {
 
         return dependencies;
     }
+    */
 
     public static Set<String> getDependenciesOfClass( final InputStream pInputStream ) throws IOException {
         final DependenciesClassAdapter v = new DependenciesClassAdapter();
